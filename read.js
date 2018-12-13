@@ -1,3 +1,14 @@
+// MINIMAL LISP READER
+// (adapted from Parinfer)
+//
+// Parses only the bare minimum to find indentation points and parens
+//
+// Designed for Clojure, but should work for any syntax having:
+// - Parens:     `(round), {curly}, [square]`
+// - Comments:   `; comment rest of line`
+// - Strings:    `"string"` (multi-line)
+// - Characters: `\char`
+//
 
 //------------------------------------------------------------------------------
 // Constants / Predicates
@@ -38,15 +49,13 @@ function getInitialResult(text) {
 
   var result = {
 
-    indentFixes: [],
-
     lines:                     // [string array] - input lines that we process line-by-line, char-by-char
       text.split(LINE_ENDING_REGEX),
     lineNo: -1,                // [integer] - the current input line number
     x: -1,                     // [integer] - the current input x position of the current character (ch)
 
     parenStack: [],            // We track where we are in the Lisp tree by keeping a stack (array) of open-parens.
-                               // Stack elements are objects containing keys {ch, x, lineNo, indentDelta}
+                               // Stack elements are objects containing keys {ch, x, lineNo}
                                // whose values are the same as those described here in this result structure.
 
     isInCode: true,            // [boolean] - indicates if we are currently in "code space" (not string or comment)
@@ -58,7 +67,7 @@ function getInitialResult(text) {
     success: false,            // [boolean] - was the input properly formatted enough to create a valid result?
 
     error: {                   // if 'success' is false, return this error to the user
-      name: null,              // [string] - Parindent's unique name for this error
+      name: null,              // [string] - reader's unique name for this error
       message: null,           // [string] - error message to display
       lineNo: null,            // [integer] - line number of error
       x: null,                 // [integer] - start x position of error
@@ -105,7 +114,7 @@ function error(result, name) {
   var cache = result.errorPosCache[name];
 
   var e = {
-    parindentError: true,
+    readerError: true,
     name: name,
     message: errorMessages[name],
     lineNo: cache ? cache.lineNo : result.lineNo,
@@ -138,25 +147,17 @@ function initLine(result) {
   delete result.errorPosCache[ERROR_UNMATCHED_CLOSE_PAREN];
   delete result.errorPosCache[ERROR_UNMATCHED_OPEN_PAREN];
 
-  result.indentDelta = 0;
   result.isInComment = false;
   result.isEscaping = false;
   result.trackingIndent = !result.isInStr;
+
+  // HOOK
+  if (result.onInitLine) result.onInitLine(result);
 }
 
 //------------------------------------------------------------------------------
 // Misc Utils
 //------------------------------------------------------------------------------
-
-function clamp(val, minN, maxN) {
-  if (minN !== UINT_NULL) {
-    val = Math.max(minN, val);
-  }
-  if (maxN !== UINT_NULL) {
-    val = Math.min(maxN, val);
-  }
-  return val;
-}
 
 function peek(arr, idxFromBack) {
   var maxIdx = arr.length - 1;
@@ -195,9 +196,9 @@ function onOpenParen(result) {
       lineNo: result.lineNo,
       x: result.x,
       ch: result.ch,
-      indentDelta: result.indentDelta,
-      childIndentX: UINT_NULL
     };
+    // HOOK
+    if (result.onOpener) result.onOpener(result, opener);
     result.parenStack.push(opener);
   }
 }
@@ -263,70 +264,16 @@ function onChar(result) {
 // Indentation functions
 //------------------------------------------------------------------------------
 
-function scanForCode(result, x, lineNo) {
-  // TODO:
-  // scan characters until reaching non-whitespace
-  // if quote or semicolon or end reached, return UINT_NULL
-  // else return x
-}
-
-function scanForSpace(result, x, lineNo) {
-  // TODO:
-  // scan characters until reaching space
-  // return x
-  // if reach end, return line length
-}
-
-function isSymbol(str) {
-  // TODO:
-}
-
-function getOpenerIndentSize(result, opener) {
-  if (opener.ch === "[") {
-    return 1;
-  } else if (opener.ch === "{") {
-    return 1;
-  } else if (opener.ch === "(") {
-    var lineNo = opener.lineNo;
-    var codeX = scanForCode(result, opener.x, lineNo);
-    if (codeX !== UINT_NULL) {
-      var spaceX = scanForSpace(result, codeX, lineNo);
-      if (isSymbol(result.lines[lineNo].slice(codeX, spaceX))) {
-        var argX = scanForCode(result, spaceX, lineNo);
-        if (argX === result.x) {
-          return argX - opener.x;
-        }
-        return 2;
-      }
-    }
-    return 1;
-  }
-}
-
-function getCorrectIndentX(result) {
-  if (result.parenStack.length === 0) return 0;
-  var opener = peek(result.parenStack, 0);
-  if (opener.childIndentX === UINT_NULL) {
-    var indentSize = getOpenerIndentSize(result, opener);
-    opener.childIndentX = opener.x + opener.indentDelta + indentSize;
-  }
-  return opener.childIndentX;
-}
-
 function onIndent(result) {
   result.trackingIndent = false;
-  const correctIndentX = getCorrectIndentX(result);
-  if (result.x !== correctIndentX) {
-    result.indentDelta = correctIndentX - result.x;
-    result.indentFixes.push({
-      lineNo: result.lineNo,
-      indentDelta: result.indentDelta
-    });
-  }
+  // HOOK
+  if (result.onIndent) result.onIndent(result);
 }
 
 function checkIndent(result) {
-  if (result.ch !== BLANK_SPACE && result.ch !== TAB) {
+  if (result.trackingIndent &&
+      result.ch !== BLANK_SPACE &&
+      result.ch !== TAB) {
     onIndent(result);
   }
 }
@@ -337,9 +284,7 @@ function checkIndent(result) {
 
 function processChar(result, ch) {
   result.ch = ch;
-  if (result.trackingIndent) {
-    checkIndent(result);
-  }
+  checkIndent(result);
   onChar(result);
 }
 
@@ -364,8 +309,8 @@ function finalizeResult(result) {
 
 function processError(result, e) {
   result.success = false;
-  if (e.parindentError) {
-    delete e.parindentError;
+  if (e.readerError) {
+    delete e.readerError;
     result.error = e;
   } else {
     result.error.name = ERROR_UNHANDLED;
