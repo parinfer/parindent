@@ -8,14 +8,13 @@
 // - Comments:   `; comment rest of line`
 // - Strings:    `"string"` (multi-line)
 // - Characters: `\char`
-//
 
 //------------------------------------------------------------------------------
 // Constants / Predicates
 //------------------------------------------------------------------------------
 
 // NOTE: this is a performance hack
-// The main result object uses a lot of "unsigned integer or null" values.
+// The main state object uses a lot of "unsigned integer or null" values.
 // Using a negative integer is faster than actual null because it cuts down on
 // type coercion overhead.
 var UINT_NULL = -999;
@@ -38,16 +37,16 @@ var MATCH_PAREN = {
 };
 
 //------------------------------------------------------------------------------
-// Result Structure
+// State Structure
 //------------------------------------------------------------------------------
 
-// This represents the running result. As we scan through each character
+// This represents the running state. As we scan through each character
 // of a given text, we mutate this structure to update the state of our
 // system.
 
-function getInitialResult(text) {
+function getInitialState(text, hooks) {
 
-  var result = {
+  var state = {
 
     lines:                     // [string array] - input lines that we process line-by-line, char-by-char
       text.split(LINE_ENDING_REGEX),
@@ -56,7 +55,7 @@ function getInitialResult(text) {
 
     parenStack: [],            // We track where we are in the Lisp tree by keeping a stack (array) of open-parens.
                                // Stack elements are objects containing keys {ch, x, lineNo}
-                               // whose values are the same as those described here in this result structure.
+                               // whose values are the same as those described here in this state structure.
 
     isInCode: true,            // [boolean] - indicates if we are currently in "code space" (not string or comment)
     isEscaping: false,         // [boolean] - indicates if the next character will be escaped (e.g. `\c`).  This may be inside string, comment, or code.
@@ -64,7 +63,7 @@ function getInitialResult(text) {
     isInComment: false,        // [boolean] - indicates if we are currently inside a comment
 
     trackingIndent: false,     // [boolean] - are we looking for the indentation point of the current line?
-    success: false,            // [boolean] - was the input properly formatted enough to create a valid result?
+    success: false,            // [boolean] - was the input properly formatted enough to create a valid state?
 
     error: {                   // if 'success' is false, return this error to the user
       name: null,              // [string] - reader's unique name for this error
@@ -77,17 +76,23 @@ function getInitialResult(text) {
         x: null
       }
     },
-    errorPosCache: {}          // [object] - maps error name to a potential error position
+    errorPosCache: {},         // [object] - maps error name to a potential error position
+
+    hooks: hooks || {},
   };
 
-  return result;
+  if (hooks.onInitState) {
+    hooks.onInitState(state);
+  }
+
+  return state;
 }
 
 //------------------------------------------------------------------------------
 // Possible Errors
 //------------------------------------------------------------------------------
 
-// `result.error.name` is set to any of these
+// `state.error.name` is set to any of these
 var ERROR_UNCLOSED_QUOTE = "unclosed-quote";
 var ERROR_UNCLOSED_PAREN = "unclosed-paren";
 var ERROR_UNMATCHED_CLOSE_PAREN = "unmatched-close-paren";
@@ -101,30 +106,30 @@ errorMessages[ERROR_UNMATCHED_CLOSE_PAREN] = "Unmatched close-paren.";
 errorMessages[ERROR_UNMATCHED_OPEN_PAREN] = "Unmatched open-paren.";
 errorMessages[ERROR_UNHANDLED] = "Unhandled error.";
 
-function cacheErrorPos(result, errorName) {
+function cacheErrorPos(state, errorName) {
   var e = {
-    lineNo: result.lineNo,
-    x: result.x,
+    lineNo: state.lineNo,
+    x: state.x,
   };
-  result.errorPosCache[errorName] = e;
+  state.errorPosCache[errorName] = e;
   return e;
 }
 
-function error(result, name) {
-  var cache = result.errorPosCache[name];
+function error(state, name) {
+  var cache = state.errorPosCache[name];
 
   var e = {
     readerError: true,
     name: name,
     message: errorMessages[name],
-    lineNo: cache ? cache.lineNo : result.lineNo,
-    x: cache ? cache.x : result.x
+    lineNo: cache ? cache.lineNo : state.lineNo,
+    x: cache ? cache.x : state.x
   };
-  var opener = peek(result.parenStack, 0);
+  var opener = peek(state.parenStack, 0);
 
   if (name === ERROR_UNMATCHED_CLOSE_PAREN) {
     // extra error info for locating the open-paren that it should've matched
-    cache = result.errorPosCache[ERROR_UNMATCHED_OPEN_PAREN];
+    cache = state.errorPosCache[ERROR_UNMATCHED_OPEN_PAREN];
     if (cache || opener) {
       e.extra = {
         name: ERROR_UNMATCHED_OPEN_PAREN,
@@ -143,16 +148,17 @@ function error(result, name) {
 // Line operations
 //------------------------------------------------------------------------------
 
-function initLine(result) {
-  delete result.errorPosCache[ERROR_UNMATCHED_CLOSE_PAREN];
-  delete result.errorPosCache[ERROR_UNMATCHED_OPEN_PAREN];
+function initLine(state) {
+  delete state.errorPosCache[ERROR_UNMATCHED_CLOSE_PAREN];
+  delete state.errorPosCache[ERROR_UNMATCHED_OPEN_PAREN];
 
-  result.isInComment = false;
-  result.isEscaping = false;
-  result.trackingIndent = !result.isInStr;
+  state.isInComment = false;
+  state.isEscaping = false;
+  state.trackingIndent = !state.isInStr;
 
-  // HOOK
-  if (result.onInitLine) result.onInitLine(result);
+  if (state.hooks.onInitLine) {
+    state.hook.onInitLine(state);
+  }
 }
 
 //------------------------------------------------------------------------------
@@ -190,91 +196,93 @@ function isValidCloseParen(parenStack, ch) {
 // Literal character events
 //------------------------------------------------------------------------------
 
-function onOpenParen(result) {
-  if (result.isInCode) {
+function onOpenParen(state) {
+  if (state.isInCode) {
     var opener = {
-      lineNo: result.lineNo,
-      x: result.x,
-      ch: result.ch,
+      lineNo: state.lineNo,
+      x: state.x,
+      ch: state.ch,
     };
-    // HOOK
-    if (result.onOpener) result.onOpener(result, opener);
-    result.parenStack.push(opener);
+    if (state.hooks.onOpener) {
+      state.hooks.onOpener(state, opener);
+    }
+    state.parenStack.push(opener);
   }
 }
 
-function onCloseParen(result) {
-  if (result.isInCode) {
-    if (isValidCloseParen(result.parenStack, result.ch)) {
-      result.parenStack.pop();
+function onCloseParen(state) {
+  if (state.isInCode) {
+    if (isValidCloseParen(state.parenStack, state.ch)) {
+      state.parenStack.pop();
     } else {
-      throw error(result, ERROR_UNMATCHED_CLOSE_PAREN);
+      throw error(state, ERROR_UNMATCHED_CLOSE_PAREN);
     }
   }
 }
 
-function onTab(result) {
-  if (result.isInCode) {
+function onTab(state) {
+  if (state.isInCode) {
     // TODO: handle this somehow
   }
 }
 
-function onSemicolon(result) {
-  if (result.isInCode) {
-    result.isInComment = true;
+function onSemicolon(state) {
+  if (state.isInCode) {
+    state.isInComment = true;
   }
 }
 
-function onQuote(result) {
-  if (result.isInStr) {
-    result.isInStr = false;
+function onQuote(state) {
+  if (state.isInStr) {
+    state.isInStr = false;
   } else {
-    result.isInStr = true;
-    cacheErrorPos(result, ERROR_UNCLOSED_QUOTE);
+    state.isInStr = true;
+    cacheErrorPos(state, ERROR_UNCLOSED_QUOTE);
   }
 }
 
-function onBackslash(result) {
-  result.isEscaping = true;
+function onBackslash(state) {
+  state.isEscaping = true;
 }
 
-function afterBackslash(result) {
-  result.isEscaping = false;
+function afterBackslash(state) {
+  state.isEscaping = false;
 }
 
 //------------------------------------------------------------------------------
 // Character dispatch
 //------------------------------------------------------------------------------
 
-function onChar(result) {
-  var ch = result.ch;
+function onChar(state) {
+  var ch = state.ch;
 
-  if (result.isEscaping)        { afterBackslash(result); }
-  else if (isOpenParen(ch))     { onOpenParen(result); }
-  else if (isCloseParen(ch))    { onCloseParen(result); }
-  else if (ch === DOUBLE_QUOTE) { onQuote(result); }
-  else if (ch === SEMICOLON)    { onSemicolon(result); }
-  else if (ch === BACKSLASH)    { onBackslash(result); }
-  else if (ch === TAB)          { onTab(result); }
+  if (state.isEscaping)        { afterBackslash(state); }
+  else if (isOpenParen(ch))     { onOpenParen(state); }
+  else if (isCloseParen(ch))    { onCloseParen(state); }
+  else if (ch === DOUBLE_QUOTE) { onQuote(state); }
+  else if (ch === SEMICOLON)    { onSemicolon(state); }
+  else if (ch === BACKSLASH)    { onBackslash(state); }
+  else if (ch === TAB)          { onTab(state); }
 
-  result.isInCode = !result.isInComment && !result.isInStr;
+  state.isInCode = !state.isInComment && !state.isInStr;
 }
 
 //------------------------------------------------------------------------------
 // Indentation functions
 //------------------------------------------------------------------------------
 
-function onIndent(result) {
-  result.trackingIndent = false;
-  // HOOK
-  if (result.onIndent) result.onIndent(result);
+function onIndent(state) {
+  state.trackingIndent = false;
+  if (state.hooks.onIndent) {
+    state.hooks.onIndent(state);
+  }
 }
 
-function checkIndent(result) {
-  if (result.trackingIndent &&
-      result.ch !== BLANK_SPACE &&
-      result.ch !== TAB) {
-    onIndent(result);
+function checkIndent(state) {
+  if (state.trackingIndent &&
+      state.ch !== BLANK_SPACE &&
+      state.ch !== TAB) {
+    onIndent(state);
   }
 }
 
@@ -282,55 +290,59 @@ function checkIndent(result) {
 // High-level processing functions
 //------------------------------------------------------------------------------
 
-function processChar(result, ch) {
-  result.ch = ch;
-  checkIndent(result);
-  onChar(result);
+function processChar(state, ch) {
+  state.ch = ch;
+  checkIndent(state);
+  onChar(state);
 }
 
-function processLine(result, lineNo) {
-  initLine(result);
+function processLine(state, lineNo) {
+  initLine(state);
   var x;
-  for (x = 0; x < result.lines[lineNo].length; x++) {
-    result.x = x;
-    processChar(result, result.lines[lineNo][x]);
+  for (x = 0; x < state.lines[lineNo].length; x++) {
+    state.x = x;
+    processChar(state, state.lines[lineNo][x]);
   }
 }
 
-function finalizeResult(result) {
-  if (result.isInStr) {
-    throw error(result, ERROR_UNCLOSED_QUOTE);
+function finalizeState(state) {
+  if (state.isInStr) {
+    throw error(state, ERROR_UNCLOSED_QUOTE);
   }
-  if (result.parenStack.length !== 0) {
-    throw error(result, ERROR_UNCLOSED_PAREN);
+  if (state.parenStack.length !== 0) {
+    throw error(state, ERROR_UNCLOSED_PAREN);
   }
-  result.success = true;
+  state.success = true;
+
+  if (state.hooks.onFinalState) {
+    state.hooks.onFinalState(state);
+  }
 }
 
-function processError(result, e) {
-  result.success = false;
+function processError(state, e) {
+  state.success = false;
   if (e.readerError) {
     delete e.readerError;
-    result.error = e;
+    state.error = e;
   } else {
-    result.error.name = ERROR_UNHANDLED;
-    result.error.message = e.stack;
+    state.error.name = ERROR_UNHANDLED;
+    state.error.message = e.stack;
     throw e;
   }
 }
 
-function processText(text) {
-  var result = getInitialResult(text);
+function processText(text, hooks) {
+  var state = getInitialState(text, hooks);
   try {
     var i;
-    for (i = 0; i < result.lines.length; i++) {
-      result.lineNo = i;
-      processLine(result, i);
+    for (i = 0; i < state.lines.length; i++) {
+      state.lineNo = i;
+      processLine(state, i);
     }
-    finalizeResult(result);
+    finalizeState(state);
   }
   catch (e) {
-    processError(result, e);
+    processError(state, e);
   }
-  return result;
+  return state;
 }

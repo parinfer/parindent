@@ -2,28 +2,34 @@
 // (using the MINIMAL LISP READER)
 //
 // Fix the indentation of every line using very simple rules.
-//
 
 //------------------------------------------------------------------------------
 // Reader hooks
 //------------------------------------------------------------------------------
 
-function onInitLine(result) {
-  result.indentDelta = 0;
+function onInitState(state) {
+  state.indentFixes = [];
 }
 
-function onOpener(result, opener) {
-  opener.indentDelta = result.indentDelta;
+function onFinalState(state) {
+}
+
+function onInitLine(state) {
+  state.indentDelta = 0;
+}
+
+function onOpener(state, opener) {
+  opener.indentDelta = state.indentDelta;
   opener.childIndentX = UINT_NULL;
 }
 
-function onIndent(result) {
-  const correctIndentX = getCorrectIndentX(result);
-  if (result.x !== correctIndentX) {
-    result.indentDelta = correctIndentX - result.x;
-    result.indentFixes.push({
-      lineNo: result.lineNo,
-      indentDelta: result.indentDelta
+function onIndent(state) {
+  const correctIndentX = getCorrectIndentX(state);
+  if (state.x !== correctIndentX) {
+    state.indentDelta = correctIndentX - state.x;
+    state.indentFixes.push({
+      lineNo: state.lineNo,
+      indentDelta: state.indentDelta
     });
   }
 }
@@ -32,19 +38,19 @@ function onIndent(result) {
 // Indentation correction
 //------------------------------------------------------------------------------
 
-function getOpenerIndentSize(result, opener) {
+function getOpenerIndentSize(state, opener) {
   if (opener.ch === "[") {
     return 1;
   } else if (opener.ch === "{") {
     return 1;
   } else if (opener.ch === "(") {
     var lineNo = opener.lineNo;
-    var codeX = scanForCode(result, opener.x, lineNo);
+    var codeX = scanForCode(state, opener.x, lineNo);
     if (codeX !== UINT_NULL) {
-      var spaceX = scanForSpace(result, codeX, lineNo);
-      if (isSymbol(result.lines[lineNo].slice(codeX, spaceX))) {
-        var argX = scanForCode(result, spaceX, lineNo);
-        if (argX === result.x) {
+      var spaceX = scanForSpace(state, codeX, lineNo);
+      if (isSymbol(state.lines[lineNo].slice(codeX, spaceX))) {
+        var argX = scanForCode(state, spaceX, lineNo);
+        if (argX === state.x) {
           return argX - opener.x;
         }
         return 2;
@@ -54,11 +60,11 @@ function getOpenerIndentSize(result, opener) {
   }
 }
 
-function getCorrectIndentX(result) {
-  if (result.parenStack.length === 0) return 0;
-  var opener = peek(result.parenStack, 0);
+function getCorrectIndentX(state) {
+  if (state.parenStack.length === 0) return 0;
+  var opener = peek(state.parenStack, 0);
   if (opener.childIndentX === UINT_NULL) {
-    var indentSize = getOpenerIndentSize(result, opener);
+    var indentSize = getOpenerIndentSize(state, opener);
     opener.childIndentX = opener.x + opener.indentDelta + indentSize;
   }
   return opener.childIndentX;
@@ -68,14 +74,14 @@ function getCorrectIndentX(result) {
 // Extra reader code
 //------------------------------------------------------------------------------
 
-function scanForCode(result, x, lineNo) {
+function scanForCode(state, x, lineNo) {
   // TODO:
   // scan characters until reaching non-whitespace
   // if quote or semicolon or end reached, return UINT_NULL
   // else return x
 }
 
-function scanForSpace(result, x, lineNo) {
+function scanForSpace(state, x, lineNo) {
   // TODO:
   // scan characters until reaching space
   // return x
