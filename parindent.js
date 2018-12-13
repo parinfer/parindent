@@ -12,7 +12,6 @@ var UINT_NULL = -999;
 var BACKSLASH = '\\',
     BLANK_SPACE = ' ',
     DOUBLE_QUOTE = '"',
-    NEWLINE = '\n',
     SEMICOLON = ';',
     TAB = '\t';
 
@@ -80,7 +79,6 @@ function getInitialResult(text) {
 //------------------------------------------------------------------------------
 
 // `result.error.name` is set to any of these
-var ERROR_EOL_BACKSLASH = "eol-backslash";
 var ERROR_UNCLOSED_QUOTE = "unclosed-quote";
 var ERROR_UNCLOSED_PAREN = "unclosed-paren";
 var ERROR_UNMATCHED_CLOSE_PAREN = "unmatched-close-paren";
@@ -88,7 +86,6 @@ var ERROR_UNMATCHED_OPEN_PAREN = "unmatched-open-paren";
 var ERROR_UNHANDLED = "unhandled";
 
 var errorMessages = {};
-errorMessages[ERROR_EOL_BACKSLASH] = "Line cannot end in a hanging backslash.";
 errorMessages[ERROR_UNCLOSED_QUOTE] = "String is missing a closing quote.";
 errorMessages[ERROR_UNCLOSED_PAREN] = "Unclosed open-paren.";
 errorMessages[ERROR_UNMATCHED_CLOSE_PAREN] = "Unmatched close-paren.";
@@ -144,6 +141,7 @@ function initLine(result) {
 
   result.indentDelta = 0;
   result.isInComment = false;
+  result.isEscaping = false;
   result.trackingIndent = !result.isInStr;
 }
 
@@ -242,10 +240,6 @@ function onBackslash(result) {
 
 function afterBackslash(result) {
   result.isEscaping = false;
-
-  if (result.ch === NEWLINE && result.isInCode) {
-    throw error(result, ERROR_EOL_BACKSLASH);
-  }
 }
 
 //------------------------------------------------------------------------------
