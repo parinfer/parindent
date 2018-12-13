@@ -39,6 +39,8 @@ function getInitialResult(text) {
 
   var result = {
 
+    indentFixes: [],
+
     lines:                     // [string array] - input lines that we process line-by-line, char-by-char
       text.split(LINE_ENDING_REGEX),
     lineNo: -1,                // [integer] - the current input line number
@@ -140,6 +142,7 @@ function initLine(result) {
   delete result.errorPosCache[ERROR_UNMATCHED_OPEN_PAREN];
   delete result.errorPosCache[ERROR_LEADING_CLOSE_PAREN];
 
+  result.indentDelta = 0;
   result.isInComment = false;
   result.trackingIndent = !result.isInStr;
 }
@@ -194,7 +197,9 @@ function onOpenParen(result) {
     var opener = {
       lineNo: result.lineNo,
       x: result.x,
-      ch: result.ch
+      ch: result.ch,
+      indentDelta: result.indentDelta,
+      childIndentX: UINT_NULL
     };
     result.parenStack.push(opener);
   }
@@ -265,9 +270,66 @@ function onChar(result) {
 // Indentation functions
 //------------------------------------------------------------------------------
 
+function scanForCode(result, x, lineNo) {
+  // TODO:
+  // scan characters until reaching non-whitespace
+  // if quote or semicolon or end reached, return UINT_NULL
+  // else return x
+}
+
+function scanForSpace(result, x, lineNo) {
+  // TODO:
+  // scan characters until reaching space
+  // return x
+  // if reach end, return line length
+}
+
+function isSymbol(str) {
+  // TODO:
+}
+
+function getOpenerIndentSize(result, opener) {
+  if (opener.ch === "[") {
+    return 1;
+  } else if (opener.ch === "{") {
+    return 1;
+  } else if (opener.ch === "(") {
+    var lineNo = opener.lineNo;
+    var codeX = scanForCode(result, opener.x, lineNo);
+    if (codeX !== UINT_NULL) {
+      var spaceX = scanForSpace(result, codeX, lineNo);
+      if (isSymbol(result.lines[lineNo].slice(codeX, spaceX))) {
+        var argX = scanForCode(result, spaceX, lineNo);
+        if (argX === result.x) {
+          return argX - opener.x;
+        }
+        return 2;
+      }
+    }
+    return 1;
+  }
+}
+
+function getCorrectIndentX(result) {
+  if (result.parenStack.length === 0) return 0;
+  var opener = peek(result.parenStack, 0);
+  if (opener.childIndentX === UINT_NULL) {
+    var indentSize = getOpenerIndentSize(result, opener);
+    opener.childIndentX = opener.x + opener.indentDelta + indentSize;
+  }
+  return opener.childIndentX;
+}
+
 function onIndent(result) {
   result.trackingIndent = false;
-  // TODO: get correct indentation length here
+  const correctIndentX = getCorrectIndentX(result);
+  if (result.x !== correctIndentX) {
+    result.indentDelta = correctIndentX - result.x;
+    result.indentFixes.push({
+      lineNo: result.lineNo,
+      indentDelta: result.indentDelta
+    });
+  }
 }
 
 function checkIndent(result) {
