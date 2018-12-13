@@ -137,7 +137,6 @@ function error(result, name) {
 function initLine(result) {
   delete result.errorPosCache[ERROR_UNMATCHED_CLOSE_PAREN];
   delete result.errorPosCache[ERROR_UNMATCHED_OPEN_PAREN];
-  delete result.errorPosCache[ERROR_LEADING_CLOSE_PAREN];
 
   result.indentDelta = 0;
   result.isInComment = false;
