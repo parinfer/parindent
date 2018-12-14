@@ -24,7 +24,7 @@ A fork of Parinfer to indent files based on the following discussions:
 - **Two space**:
   - [x] Lists starting with symbol, whose second line is NOT _first-arg aligned_
 - **First-arg**:
-  - [x] Lists starting with symbol, whose seoncd line is _first-arg aligned_
+  - [x] Lists starting with symbol, whose second line is _first-arg aligned_
 
 To clarify, either of the following formats are chosen, depending on how the
 `baz` line is originally formatted:
