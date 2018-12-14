@@ -351,4 +351,4 @@ function processText(text, hooks) {
   return state;
 }
 
-module.exports = { read: processText, peek, UINT_NULL };
+module.exports = { read: processText, peek, UINT_NULL, isOpenParen };

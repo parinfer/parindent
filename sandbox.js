@@ -11,6 +11,42 @@ const text = `
      {:sum sum
       :prod prod
     }))
+
+(   foo bar
+        baz)
+
+(123 bar
+     baz)
+
+(:foo bar
+      baz)
+
+("foo" bar
+       baz)
+
+((foo) bar
+       baz)
+
+(foo bar
+     baz)
+
+(foo(bar)
+    baz)
+
+(foo (bar)
+     baz)
+
+(foo;bar
+    baz)
+
+(foo ;bar
+     baz)
+
+(foo"bar"
+    baz)
+
+(foo "bar"
+     baz)
 `.trim();
 
 const result = read(text, indentHooks);

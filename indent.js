@@ -3,7 +3,43 @@
 //
 // Fix the indentation of every line using very simple rules.
 
-const { UINT_NULL, peek } = require("./read.js");
+const { UINT_NULL, peek, isOpenParen } = require("./read.js");
+
+//------------------------------------------------------------------------------
+// Indentation correction
+//------------------------------------------------------------------------------
+
+function getOpenerIndentSize(state, opener) {
+  if (opener.ch === "[") {
+    return 1;
+  } else if (opener.ch === "{") {
+    return 1;
+  } else if (opener.ch === "(") {
+    const line = state.lines[opener.lineNo];
+    const token = getToken(line, opener.x + 1);
+    if (isSymbol(token.str)) {
+      const argX = seek(line, token.end, ch => ch !== " ");
+      const argExists = argX < line.length && line[argX] !== ";";
+      const isAligned = argX === state.x;
+      if (argExists && isAligned) {
+        const n = argX - opener.x;
+        return n;
+      }
+      return 2;
+    }
+    return 1;
+  }
+}
+
+function getCorrectIndentX(state) {
+  if (state.parenStack.length === 0) return 0;
+  const opener = peek(state.parenStack, 0);
+  if (opener.childIndentX === UINT_NULL) {
+    const indentSize = getOpenerIndentSize(state, opener);
+    opener.childIndentX = opener.x + opener.indentDelta + indentSize;
+  }
+  return opener.childIndentX;
+}
 
 //------------------------------------------------------------------------------
 // Reader hooks
@@ -33,16 +69,6 @@ function onOpener(state, opener) {
   opener.childIndentX = UINT_NULL;
 }
 
-function printResult(state) {
-  let lines = state.lines.slice();
-  for (const fix of state.indentFixes) {
-    const n = fix.indentDelta;
-    const line = lines[fix.lineNo];
-    lines[fix.lineNo] = n < 0 ? line.slice(-n) : " ".repeat(n) + line;
-  }
-  return lines.join("\n");
-}
-
 const hooks = {
   onInitState,
   onInitLine,
@@ -51,63 +77,48 @@ const hooks = {
 };
 
 //------------------------------------------------------------------------------
-// Indentation correction
-//------------------------------------------------------------------------------
-
-function getOpenerIndentSize(state, opener) {
-  if (opener.ch === "[") {
-    return 1;
-  } else if (opener.ch === "{") {
-    return 1;
-  } else if (opener.ch === "(") {
-    return 2;
-
-    // const lineNo = opener.lineNo;
-    // const codeX = scanForCode(state, opener.x + 1, lineNo);
-    // if (codeX !== UINT_NULL) {
-    //   const spaceX = scanForSpace(state, codeX, lineNo);
-    //   if (isSymbol(state.lines[lineNo].slice(codeX, spaceX))) {
-    //     const argX = scanForCode(state, spaceX, lineNo);
-    //     if (argX === state.x) {
-    //       return argX - opener.x;
-    //     }
-    //     return 2;
-    //   }
-    // }
-    // return 1;
-  }
-}
-
-function getCorrectIndentX(state) {
-  if (state.parenStack.length === 0) return 0;
-  const opener = peek(state.parenStack, 0);
-  if (opener.childIndentX === UINT_NULL) {
-    const indentSize = getOpenerIndentSize(state, opener);
-    opener.childIndentX = opener.x + opener.indentDelta + indentSize;
-  }
-  return opener.childIndentX;
-}
-
-//------------------------------------------------------------------------------
 // Extra reader code
 //------------------------------------------------------------------------------
 
-function scanForCode(state, x, lineNo) {
-  // TODO:
-  // scan characters until reaching non-whitespace
-  // if quote or semicolon or end reached, return UINT_NULL
-  // else return x
+function seek(line, startX, pred) {
+  for (let x = startX; x < line.length; x++) {
+    if (pred(line[x])) return x;
+  }
+  return line.length;
 }
 
-function scanForSpace(state, x, lineNo) {
-  // TODO:
-  // scan characters until reaching space
-  // return x
-  // if reach end, return line length
+function getToken(line, x) {
+  const start = seek(line, x, ch => ch !== " ");
+  const end = seek(line, start + 1, ch => ' \\"({[;'.includes(ch));
+  const str = line.slice(start, end);
+  return { start, end, str };
 }
 
 function isSymbol(str) {
-  // TODO:
+  if (str === "") return false;
+  if (str[0].match(/\d/)) return false;
+  if (str[0] === ":") return false;
+  if (str[0] === "#") return false;
+  if (str[0] === "-" || str[0] === "+" || str[0] === ".") {
+    if (str[1] && str[1].match(/\d/)) return false;
+  }
+  const isAlphaNum = ch => ch.match(/[a-zA-Z0-9]/);
+  const isSpecial = ch => ".*+!-_?$%&=<>:#/".includes(ch);
+  return [...str].every(ch => isAlphaNum(ch) || isSpecial(ch));
+}
+
+//------------------------------------------------------------------------------
+// Result
+//------------------------------------------------------------------------------
+
+function printResult(state) {
+  let lines = state.lines.slice();
+  for (const fix of state.indentFixes) {
+    const n = fix.indentDelta;
+    const line = lines[fix.lineNo];
+    lines[fix.lineNo] = n < 0 ? line.slice(-n) : " ".repeat(n) + line;
+  }
+  return lines.join("\n");
 }
 
 module.exports = { indentHooks: hooks, printResult };
