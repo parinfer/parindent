@@ -1,9 +1,36 @@
 # Parindent
 
-A fork of Parinfer to indent files using the following basic rules (see [discussion](https://github.com/clj-commons/formatter/issues/9)):
+A fork of Parinfer to indent files based on the following discussions:
 
-1. Multi-line lists that start with a symbol are always indented with two spaces.
-2. Other multi-line lists, vectors, maps and sets are aligned one space after the open delimiter.
-3. Multi-line lists are indented to "first-arg alignment" if and only if the 2nd line is indented as such.
-4. Top-level forms must have no indentation.
+- [Daniel Compton's call for a "no config" clojure formatter](https://clojureverse.org/t/clj-commons-building-a-formatter-like-gofmt-for-clojure/3240)
+- [Nikita Prokopov's proposed simple rules](http://tonsky.me/blog/clojurefmt/)
+- [discussion on indentation rules](https://github.com/clj-commons/formatter/issues/9)
 
+## Indentation Rules
+
+- **Zero space**:
+  - [x] Top-level forms
+- **One space**:
+  - [ ] Lists that do NOT start with symbol
+  - [x] Vectors
+  - [x] Maps
+  - [x] Sets
+- **Two space**:
+  - [ ] Lists starting with symbol, whose second line is NOT _first-arg aligned_
+- **First-arg**:
+  - [ ] Lists starting with symbol, whose seoncd line is _first-arg aligned_
+
+To clarify, either of the following formats are chosen, depending on how the
+`baz` line is originally formatted:
+
+```
+;; Two space
+(foo bar
+  baz
+  qux)
+
+;; First-arg
+(foo bar
+     baz
+     qux)
+```

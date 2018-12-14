@@ -44,10 +44,12 @@ const MATCH_PAREN = {
 // of a given text, we mutate this structure to update the state of our
 // system.
 
-function getInitialState(text, hooks) {
+function getInitialState(text, hooks = {}) {
   const lines = text.split(LINE_ENDING_REGEX);
 
   const state = {
+    hooks,
+
     lines, //                 [string array] - input lines that we process line-by-line, char-by-char
     lineNo: -1, //            [integer] - the current input line number
     x: -1, //                 [integer] - the current input x position of the current character (ch)
@@ -76,9 +78,7 @@ function getInitialState(text, hooks) {
         x: null
       }
     },
-    errorPosCache: {}, //     [object] - maps error name to a potential error position
-
-    hooks: hooks || {}
+    errorPosCache: {} //     [object] - maps error name to a potential error position
   };
 
   if (hooks.onInitState) {
@@ -158,7 +158,7 @@ function initLine(state) {
   state.trackingIndent = !state.isInStr;
 
   if (state.hooks.onInitLine) {
-    state.hook.onInitLine(state);
+    state.hooks.onInitLine(state);
   }
 }
 
@@ -350,3 +350,5 @@ function processText(text, hooks) {
   }
   return state;
 }
+
+module.exports = { read: processText, peek, UINT_NULL };
