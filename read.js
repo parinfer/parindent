@@ -17,17 +17,17 @@
 // The main state object uses a lot of "unsigned integer or null" values.
 // Using a negative integer is faster than actual null because it cuts down on
 // type coercion overhead.
-var UINT_NULL = -999;
+const UINT_NULL = -999;
 
-var BACKSLASH = '\\',
-    BLANK_SPACE = ' ',
-    DOUBLE_QUOTE = '"',
-    SEMICOLON = ';',
-    TAB = '\t';
+const BACKSLASH = "\\";
+const BLANK_SPACE = " ";
+const DOUBLE_QUOTE = '"';
+const SEMICOLON = ";";
+const TAB = "\t";
 
-var LINE_ENDING_REGEX = /\r?\n/;
+const LINE_ENDING_REGEX = /\r?\n/;
 
-var MATCH_PAREN = {
+const MATCH_PAREN = {
   "{": "}",
   "}": "{",
   "[": "]",
@@ -45,40 +45,40 @@ var MATCH_PAREN = {
 // system.
 
 function getInitialState(text, hooks) {
+  const lines = text.split(LINE_ENDING_REGEX);
 
-  var state = {
+  const state = {
+    lines, //                 [string array] - input lines that we process line-by-line, char-by-char
+    lineNo: -1, //            [integer] - the current input line number
+    x: -1, //                 [integer] - the current input x position of the current character (ch)
 
-    lines:                     // [string array] - input lines that we process line-by-line, char-by-char
-      text.split(LINE_ENDING_REGEX),
-    lineNo: -1,                // [integer] - the current input line number
-    x: -1,                     // [integer] - the current input x position of the current character (ch)
+    parenStack: [], //        We track where we are in the Lisp tree by keeping a stack (array) of open-parens.
+    //                        Stack elements are objects containing keys {ch, x, lineNo}
+    //                        whose values are the same as those described here in this state structure.
 
-    parenStack: [],            // We track where we are in the Lisp tree by keeping a stack (array) of open-parens.
-                               // Stack elements are objects containing keys {ch, x, lineNo}
-                               // whose values are the same as those described here in this state structure.
+    isInCode: true, //        [boolean] - indicates if we are currently in "code space" (not string or comment)
+    isEscaping: false, //     [boolean] - indicates if the next character will be escaped (e.g. `\c`).  This may be inside string, comment, or code.
+    isInStr: false, //        [boolean] - indicates if we are currently inside a string
+    isInComment: false, //    [boolean] - indicates if we are currently inside a comment
 
-    isInCode: true,            // [boolean] - indicates if we are currently in "code space" (not string or comment)
-    isEscaping: false,         // [boolean] - indicates if the next character will be escaped (e.g. `\c`).  This may be inside string, comment, or code.
-    isInStr: false,            // [boolean] - indicates if we are currently inside a string
-    isInComment: false,        // [boolean] - indicates if we are currently inside a comment
+    trackingIndent: false, // [boolean] - are we looking for the indentation point of the current line?
+    success: false, //        [boolean] - was the input properly formatted enough to create a valid state?
 
-    trackingIndent: false,     // [boolean] - are we looking for the indentation point of the current line?
-    success: false,            // [boolean] - was the input properly formatted enough to create a valid state?
-
-    error: {                   // if 'success' is false, return this error to the user
-      name: null,              // [string] - reader's unique name for this error
-      message: null,           // [string] - error message to display
-      lineNo: null,            // [integer] - line number of error
-      x: null,                 // [integer] - start x position of error
+    error: {
+      //                      if 'success' is false, return this error to the user
+      name: null, //          [string] - reader's unique name for this error
+      message: null, //       [string] - error message to display
+      lineNo: null, //        [integer] - line number of error
+      x: null, //             [integer] - start x position of error
       extra: {
         name: null,
         lineNo: null,
         x: null
       }
     },
-    errorPosCache: {},         // [object] - maps error name to a potential error position
+    errorPosCache: {}, //     [object] - maps error name to a potential error position
 
-    hooks: hooks || {},
+    hooks: hooks || {}
   };
 
   if (hooks.onInitState) {
@@ -93,39 +93,40 @@ function getInitialState(text, hooks) {
 //------------------------------------------------------------------------------
 
 // `state.error.name` is set to any of these
-var ERROR_UNCLOSED_QUOTE = "unclosed-quote";
-var ERROR_UNCLOSED_PAREN = "unclosed-paren";
-var ERROR_UNMATCHED_CLOSE_PAREN = "unmatched-close-paren";
-var ERROR_UNMATCHED_OPEN_PAREN = "unmatched-open-paren";
-var ERROR_UNHANDLED = "unhandled";
+const ERROR_UNCLOSED_QUOTE = "unclosed-quote";
+const ERROR_UNCLOSED_PAREN = "unclosed-paren";
+const ERROR_UNMATCHED_CLOSE_PAREN = "unmatched-close-paren";
+const ERROR_UNMATCHED_OPEN_PAREN = "unmatched-open-paren";
+const ERROR_UNHANDLED = "unhandled";
 
-var errorMessages = {};
-errorMessages[ERROR_UNCLOSED_QUOTE] = "String is missing a closing quote.";
-errorMessages[ERROR_UNCLOSED_PAREN] = "Unclosed open-paren.";
-errorMessages[ERROR_UNMATCHED_CLOSE_PAREN] = "Unmatched close-paren.";
-errorMessages[ERROR_UNMATCHED_OPEN_PAREN] = "Unmatched open-paren.";
-errorMessages[ERROR_UNHANDLED] = "Unhandled error.";
+const errorMessages = {
+  [ERROR_UNCLOSED_QUOTE]: "String is missing a closing quote.",
+  [ERROR_UNCLOSED_PAREN]: "Unclosed open-paren.",
+  [ERROR_UNMATCHED_CLOSE_PAREN]: "Unmatched close-paren.",
+  [ERROR_UNMATCHED_OPEN_PAREN]: "Unmatched open-paren.",
+  [ERROR_UNHANDLED]: "Unhandled error."
+};
 
 function cacheErrorPos(state, errorName) {
-  var e = {
+  const e = {
     lineNo: state.lineNo,
-    x: state.x,
+    x: state.x
   };
   state.errorPosCache[errorName] = e;
   return e;
 }
 
 function error(state, name) {
-  var cache = state.errorPosCache[name];
+  const cache = state.errorPosCache[name];
 
-  var e = {
+  const e = {
     readerError: true,
     name: name,
     message: errorMessages[name],
     lineNo: cache ? cache.lineNo : state.lineNo,
     x: cache ? cache.x : state.x
   };
-  var opener = peek(state.parenStack, 0);
+  const opener = peek(state.parenStack, 0);
 
   if (name === ERROR_UNMATCHED_CLOSE_PAREN) {
     // extra error info for locating the open-paren that it should've matched
@@ -166,7 +167,7 @@ function initLine(state) {
 //------------------------------------------------------------------------------
 
 function peek(arr, idxFromBack) {
-  var maxIdx = arr.length - 1;
+  const maxIdx = arr.length - 1;
   if (idxFromBack > maxIdx) {
     return null;
   }
@@ -198,10 +199,10 @@ function isValidCloseParen(parenStack, ch) {
 
 function onOpenParen(state) {
   if (state.isInCode) {
-    var opener = {
+    const opener = {
       lineNo: state.lineNo,
       x: state.x,
-      ch: state.ch,
+      ch: state.ch
     };
     if (state.hooks.onOpener) {
       state.hooks.onOpener(state, opener);
@@ -210,12 +211,20 @@ function onOpenParen(state) {
   }
 }
 
+function onMatchedCloseParen(state) {
+  state.parenStack.pop();
+}
+
+function onUnmatchedCloseParen(state) {
+  throw error(state, ERROR_UNMATCHED_CLOSE_PAREN);
+}
+
 function onCloseParen(state) {
   if (state.isInCode) {
     if (isValidCloseParen(state.parenStack, state.ch)) {
-      state.parenStack.pop();
+      onMatchedCloseParen(state);
     } else {
-      throw error(state, ERROR_UNMATCHED_CLOSE_PAREN);
+      onUnmatchedCloseParen(state);
     }
   }
 }
@@ -254,15 +263,15 @@ function afterBackslash(state) {
 //------------------------------------------------------------------------------
 
 function onChar(state) {
-  var ch = state.ch;
+  const ch = state.ch;
 
-  if (state.isEscaping)        { afterBackslash(state); }
-  else if (isOpenParen(ch))     { onOpenParen(state); }
-  else if (isCloseParen(ch))    { onCloseParen(state); }
-  else if (ch === DOUBLE_QUOTE) { onQuote(state); }
-  else if (ch === SEMICOLON)    { onSemicolon(state); }
-  else if (ch === BACKSLASH)    { onBackslash(state); }
-  else if (ch === TAB)          { onTab(state); }
+  if (state.isEscaping) afterBackslash(state);
+  else if (isOpenParen(ch)) onOpenParen(state);
+  else if (isCloseParen(ch)) onCloseParen(state);
+  else if (ch === DOUBLE_QUOTE) onQuote(state);
+  else if (ch === SEMICOLON) onSemicolon(state);
+  else if (ch === BACKSLASH) onBackslash(state);
+  else if (ch === TAB) onTab(state);
 
   state.isInCode = !state.isInComment && !state.isInStr;
 }
@@ -279,9 +288,7 @@ function onIndent(state) {
 }
 
 function checkIndent(state) {
-  if (state.trackingIndent &&
-      state.ch !== BLANK_SPACE &&
-      state.ch !== TAB) {
+  if (state.trackingIndent && state.ch !== BLANK_SPACE && state.ch !== TAB) {
     onIndent(state);
   }
 }
@@ -298,8 +305,7 @@ function processChar(state, ch) {
 
 function processLine(state, lineNo) {
   initLine(state);
-  var x;
-  for (x = 0; x < state.lines[lineNo].length; x++) {
+  for (let x = 0; x < state.lines[lineNo].length; x++) {
     state.x = x;
     processChar(state, state.lines[lineNo][x]);
   }
@@ -332,16 +338,14 @@ function processError(state, e) {
 }
 
 function processText(text, hooks) {
-  var state = getInitialState(text, hooks);
+  const state = getInitialState(text, hooks);
   try {
-    var i;
-    for (i = 0; i < state.lines.length; i++) {
+    for (let i = 0; i < state.lines.length; i++) {
       state.lineNo = i;
       processLine(state, i);
     }
     finalizeState(state);
-  }
-  catch (e) {
+  } catch (e) {
     processError(state, e);
   }
   return state;

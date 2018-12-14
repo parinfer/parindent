@@ -11,8 +11,7 @@ function onInitState(state) {
   state.indentFixes = [];
 }
 
-function onFinalState(state) {
-}
+function onFinalState(state) {}
 
 function onInitLine(state) {
   state.indentDelta = 0;
@@ -44,12 +43,12 @@ function getOpenerIndentSize(state, opener) {
   } else if (opener.ch === "{") {
     return 1;
   } else if (opener.ch === "(") {
-    var lineNo = opener.lineNo;
-    var codeX = scanForCode(state, opener.x, lineNo);
+    const lineNo = opener.lineNo;
+    const codeX = scanForCode(state, opener.x, lineNo);
     if (codeX !== UINT_NULL) {
-      var spaceX = scanForSpace(state, codeX, lineNo);
+      const spaceX = scanForSpace(state, codeX, lineNo);
       if (isSymbol(state.lines[lineNo].slice(codeX, spaceX))) {
-        var argX = scanForCode(state, spaceX, lineNo);
+        const argX = scanForCode(state, spaceX, lineNo);
         if (argX === state.x) {
           return argX - opener.x;
         }
@@ -62,9 +61,9 @@ function getOpenerIndentSize(state, opener) {
 
 function getCorrectIndentX(state) {
   if (state.parenStack.length === 0) return 0;
-  var opener = peek(state.parenStack, 0);
+  const opener = peek(state.parenStack, 0);
   if (opener.childIndentX === UINT_NULL) {
-    var indentSize = getOpenerIndentSize(state, opener);
+    const indentSize = getOpenerIndentSize(state, opener);
     opener.childIndentX = opener.x + opener.indentDelta + indentSize;
   }
   return opener.childIndentX;
