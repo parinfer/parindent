@@ -17,7 +17,7 @@
 // The main state object uses a lot of "unsigned integer or null" values.
 // Using a negative integer is faster than actual null because it cuts down on
 // type coercion overhead.
-const UINT_NULL = -999;
+export const UINT_NULL = -999;
 
 const BACKSLASH = "\\";
 const BLANK_SPACE = " ";
@@ -165,7 +165,7 @@ function initLine(state) {
 // Misc Utils
 //------------------------------------------------------------------------------
 
-function peek(arr, idxFromBack) {
+export function peek(arr, idxFromBack) {
   const maxIdx = arr.length - 1;
   if (idxFromBack > maxIdx) {
     return null;
@@ -177,7 +177,7 @@ function peek(arr, idxFromBack) {
 // Questions about characters
 //------------------------------------------------------------------------------
 
-function isOpenParen(ch) {
+export function isOpenParen(ch) {
   return ch === "{" || ch === "(" || ch === "[";
 }
 
@@ -299,17 +299,17 @@ function checkIndent(state) {
 // High-level processing functions
 //------------------------------------------------------------------------------
 
-function processChar(state, ch) {
+function readChar(state, ch) {
   state.ch = ch;
   checkIndent(state);
   onChar(state);
 }
 
-function processLine(state, lineNo) {
+function readLine(state, lineNo) {
   initLine(state);
   for (let x = 0; x < state.lines[lineNo].length; x++) {
     state.x = x;
-    processChar(state, state.lines[lineNo][x]);
+    readChar(state, state.lines[lineNo][x]);
   }
 }
 
@@ -339,12 +339,12 @@ function processError(state, e) {
   }
 }
 
-function processText(text, hooks) {
+export function readText(text, hooks) {
   const state = getInitialState(text, hooks);
   try {
     for (let i = 0; i < state.lines.length; i++) {
       state.lineNo = i;
-      processLine(state, i);
+      readLine(state, i);
     }
     finalizeState(state);
   } catch (e) {
@@ -352,5 +352,3 @@ function processText(text, hooks) {
   }
   return state;
 }
-
-module.exports = { read: processText, peek, UINT_NULL, isOpenParen };

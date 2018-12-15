@@ -1,24 +1,27 @@
 {
   "name": "parindent",
-  "version": "1.0.0",
-  "main": "indent.js",
+  "version": "0.1.0",
+  "main": "main.js",
+  "module": "indent.js",
   "bin": {
     "parindent": "./cli.js"
   },
   "files": [
+    "main.js",
     "read.js",
     "indent.js",
     "cli.js",
     "README.md",
     "CHANGES.md"
   ],
-  "author": "Shaun Lebron",
-  "license": "MIT",
   "dependencies": {
     "chalk": "^2.4.1",
+    "esm": "^3.0.84",
     "get-stdin": "^6.0.0",
     "glob": "^7.1.3",
     "minimist": "^1.2.0",
     "readline": "^1.3.0"
-  }
+  },
+  "author": "Shaun Lebron",
+  "license": "MIT"
 }
