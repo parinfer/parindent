@@ -13,7 +13,8 @@ const minimist = require("minimist");
 const readline = require("readline");
 const { fixIndent } = require("./main.js");
 
-const version = "1.0.0";
+const pkg = require("./package.json");
+const version = pkg.version;
 
 const argv = minimist(process.argv.slice(2), {
   boolean: ["write", "stdin", "help", "version", "list-different"],
