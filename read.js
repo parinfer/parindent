@@ -58,7 +58,6 @@ function getInitialState(text, hooks = {}) {
     //                        Stack elements are objects containing keys {ch, x, lineNo}
     //                        whose values are the same as those described here in this state structure.
 
-    isInCode: true, //        [boolean] - indicates if we are currently in "code space" (not string or comment)
     isEscaping: false, //     [boolean] - indicates if the next character will be escaped (e.g. `\c`).  This may be inside string, comment, or code.
     isInStr: false, //        [boolean] - indicates if we are currently inside a string
     isInComment: false, //    [boolean] - indicates if we are currently inside a comment
@@ -130,7 +129,7 @@ function error(state, name) {
 
   if (name === ERROR_UNMATCHED_CLOSE_PAREN) {
     // extra error info for locating the open-paren that it should've matched
-    cache = state.errorPosCache[ERROR_UNMATCHED_OPEN_PAREN];
+    const cache = state.errorPosCache[ERROR_UNMATCHED_OPEN_PAREN];
     if (cache || opener) {
       e.extra = {
         name: ERROR_UNMATCHED_OPEN_PAREN,
@@ -198,7 +197,7 @@ function isValidCloseParen(parenStack, ch) {
 //------------------------------------------------------------------------------
 
 function onOpenParen(state) {
-  if (state.isInCode) {
+  if (isInCode(state)) {
     const opener = {
       lineNo: state.lineNo,
       x: state.x,
@@ -220,7 +219,7 @@ function onUnmatchedCloseParen(state) {
 }
 
 function onCloseParen(state) {
-  if (state.isInCode) {
+  if (isInCode(state)) {
     if (isValidCloseParen(state.parenStack, state.ch)) {
       onMatchedCloseParen(state);
     } else {
@@ -230,13 +229,13 @@ function onCloseParen(state) {
 }
 
 function onTab(state) {
-  if (state.isInCode) {
+  if (isInCode(state)) {
     // TODO: handle this somehow
   }
 }
 
 function onSemicolon(state) {
-  if (state.isInCode) {
+  if (isInCode(state)) {
     state.isInComment = true;
   }
 }
@@ -258,6 +257,11 @@ function afterBackslash(state) {
   state.isEscaping = false;
 }
 
+function isInCode(state) {
+  // indicates if we are currently in "code space" (not string or comment)
+  return !state.isInComment && !state.isInStr;
+}
+
 //------------------------------------------------------------------------------
 // Character dispatch
 //------------------------------------------------------------------------------
@@ -272,8 +276,6 @@ function onChar(state) {
   else if (ch === SEMICOLON) onSemicolon(state);
   else if (ch === BACKSLASH) onBackslash(state);
   else if (ch === TAB) onTab(state);
-
-  state.isInCode = !state.isInComment && !state.isInStr;
 }
 
 //------------------------------------------------------------------------------
