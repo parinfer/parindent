@@ -122,7 +122,7 @@ function printResult(state) {
 }
 
 export function fixIndent(text) {
-  const result = read(text, hooks);
+  const result = readText(text, hooks);
   result.text = printResult(result);
   return result;
 }
