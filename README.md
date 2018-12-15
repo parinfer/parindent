@@ -1,6 +1,6 @@
 # Parindent
 
-Indent Clojure files based on the following discussions:
+**WIP public prototype**— Indent Clojure files based on the following discussions:
 
 - [Daniel Compton's call for a "no config" clojure formatter](https://clojureverse.org/t/clj-commons-building-a-formatter-like-gofmt-for-clojure/3240)
 - [Nikita Prokopov's proposed simple rules](http://tonsky.me/blog/clojurefmt/)
