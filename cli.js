@@ -50,7 +50,7 @@ function getLineEnding(text) {
 
 function format(input) {
   const result = fixIndent(input);
-  if (result.error) {
+  if (!result.success) {
     throw result.error;
   }
   const output = result.text;
