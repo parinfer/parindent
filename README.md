@@ -10,7 +10,7 @@ A fork of Parinfer to indent files based on the following discussions:
 
 - [x] implementation
 - [ ] tests
-- [ ] cli
+- [x] cli
 
 ## Indentation Rules
 

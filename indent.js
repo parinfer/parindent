@@ -3,7 +3,7 @@
 //
 // Fix the indentation of every line using very simple rules.
 
-const { UINT_NULL, peek, isOpenParen } = require("./read.js");
+const { UINT_NULL, peek, isOpenParen, read } = require("./read.js");
 
 //------------------------------------------------------------------------------
 // Indentation correction
@@ -118,7 +118,13 @@ function printResult(state) {
     const line = lines[fix.lineNo];
     lines[fix.lineNo] = n < 0 ? line.slice(-n) : " ".repeat(n) + line;
   }
-  return lines.join("\n");
+  return lines.join("\n"); // FIXME: CRLF line-endings
 }
 
-module.exports = { indentHooks: hooks, printResult };
+function fixIndent(text) {
+  const result = read(text, hooks);
+  result.text = printResult(result);
+  return result;
+}
+
+module.exports = { fixIndent };

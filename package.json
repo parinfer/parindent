@@ -1,0 +1,58 @@
+{
+  "name": "parinfer",
+  "version": "3.12.0",
+  "description": "a simpler way to write Lisp",
+  "main": "parinfer.js",
+  "scripts": {
+    "test": "bash test-all"
+  },
+  "files": [
+    "parinfer.js",
+    "test.js",
+    "README.md",
+    "CHANGES.md"
+  ],
+  "eslintConfig": {
+    "extends": [
+      "defaults"
+    ],
+    "env": {
+      "node": true,
+      "commonjs": true,
+      "amd": true,
+      "browser": true
+    },
+    "rules": {
+      "no-console": 0,
+      "no-constant-condition": 0,
+      "semi": 2
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shaunlebron/parinfer"
+  },
+  "keywords": [
+    "parinfer",
+    "paredit",
+    "lisp"
+  ],
+  "author": "Shaun Lebron",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/shaunlebron/parinfer/issues"
+  },
+  "homepage": "http://shaunlebron.github.io/parinfer",
+  "devDependencies": {
+    "eslint": "^1.10.3",
+    "eslint-config-defaults": "^7.1.1",
+    "mocha": "^2.3.4"
+  },
+  "dependencies": {
+    "chalk": "^2.4.1",
+    "get-stdin": "^6.0.0",
+    "glob": "^7.1.3",
+    "minimist": "^1.2.0",
+    "readline": "^1.3.0"
+  }
+}
