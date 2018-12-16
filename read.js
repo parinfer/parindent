@@ -20,7 +20,7 @@
 export const UINT_NULL = -999;
 
 const BACKSLASH = "\\";
-const BLANK_SPACE = " ";
+const SPACE = " ";
 const DOUBLE_QUOTE = '"';
 const SEMICOLON = ";";
 const TAB = "\t";
@@ -49,6 +49,7 @@ function getInitialState(text, hooks = {}) {
 
   const state = {
     hooks,
+    children: [],
 
     lines, //                 [string array] - input lines that we process line-by-line, char-by-char
     lineNo: -1, //            [integer] - the current input line number
@@ -62,6 +63,7 @@ function getInitialState(text, hooks = {}) {
     isInStr: false, //        [boolean] - indicates if we are currently inside a string
     isInComment: false, //    [boolean] - indicates if we are currently inside a comment
 
+    trackingTokenStart: true,
     trackingIndent: false, // [boolean] - are we looking for the indentation point of the current line?
     success: false, //        [boolean] - was the input properly formatted enough to create a valid state?
 
@@ -155,6 +157,7 @@ function initLine(state) {
   state.isInComment = false;
   state.isEscaping = false;
   state.trackingIndent = !state.isInStr;
+  state.trackingTokenStart = !state.isInStr;
 
   if (state.hooks.onInitLine) {
     state.hooks.onInitLine(state);
@@ -196,13 +199,23 @@ function isValidCloseParen(parenStack, ch) {
 // Literal character events
 //------------------------------------------------------------------------------
 
+function onTokenStart(state, opener) {
+  state.trackingTokenStart = false;
+  const { lineNo, x, ch } = state;
+  const parent = peek(state.parenStack, 0);
+  (parent || state).children.push(opener || { lineNo, x, ch });
+}
+
 function onOpenParen(state) {
   if (isInCode(state)) {
     const opener = {
       lineNo: state.lineNo,
       x: state.x,
-      ch: state.ch
+      ch: state.ch,
+      children: []
     };
+    onTokenStart(state, opener);
+    state.trackingTokenStart = true;
     if (state.hooks.onOpener) {
       state.hooks.onOpener(state, opener);
     }
@@ -211,7 +224,10 @@ function onOpenParen(state) {
 }
 
 function onMatchedCloseParen(state) {
-  state.parenStack.pop();
+  const opener = state.parenStack.pop();
+  const { lineNo, x, ch } = state;
+  opener.closer = { lineNo, x, ch };
+  state.trackingTokenStart = true;
 }
 
 function onUnmatchedCloseParen(state) {
@@ -230,12 +246,14 @@ function onCloseParen(state) {
 
 function onTab(state) {
   if (isInCode(state)) {
-    // TODO: handle this somehow
+    const { lineNo, x } = state;
+    console.warning("TAB character found at", { lineNo, x });
   }
 }
 
 function onSemicolon(state) {
   if (isInCode(state)) {
+    onTokenStart(state);
     state.isInComment = true;
   }
 }
@@ -243,7 +261,9 @@ function onSemicolon(state) {
 function onQuote(state) {
   if (state.isInStr) {
     state.isInStr = false;
+    state.trackingTokenStart = true;
   } else {
+    onTokenStart(state);
     state.isInStr = true;
     cacheErrorPos(state, ERROR_UNCLOSED_QUOTE);
   }
@@ -251,10 +271,17 @@ function onQuote(state) {
 
 function onBackslash(state) {
   state.isEscaping = true;
+  if (!state.isInStr) onTokenStart(state);
 }
 
 function afterBackslash(state) {
   state.isEscaping = false;
+}
+
+function onSpace(state) {
+  if (isInCode(state)) {
+    state.trackingTokenStart = true;
+  }
 }
 
 function isInCode(state) {
@@ -276,6 +303,8 @@ function onChar(state) {
   else if (ch === SEMICOLON) onSemicolon(state);
   else if (ch === BACKSLASH) onBackslash(state);
   else if (ch === TAB) onTab(state);
+  else if (ch === SPACE) onSpace(state);
+  else if (state.trackingTokenStart) onTokenStart(state);
 }
 
 //------------------------------------------------------------------------------
@@ -290,7 +319,7 @@ function onIndent(state) {
 }
 
 function checkIndent(state) {
-  if (state.trackingIndent && state.ch !== BLANK_SPACE && state.ch !== TAB) {
+  if (state.trackingIndent && state.ch !== SPACE && state.ch !== TAB) {
     onIndent(state);
   }
 }
