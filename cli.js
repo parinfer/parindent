@@ -5,6 +5,18 @@
 
 "use strict";
 
+const USAGE = `
+Usage: parindent [opts] [filename ...]
+
+A minimal indenter for Lisp code (e.g. Clojure)
+
+Available options:
+  --write                  Edit the file in-place. (Beware!)
+  --list-different or -l   Print filenames of files that are different from Parindent formatting.
+  --stdin                  Read input from stdin.
+  --version or -v          Print Parindent version.
+`;
+
 const fs = require("fs");
 const getStdin = require("get-stdin");
 const glob = require("glob");
@@ -68,19 +80,7 @@ function handleError(filename, e) {
 }
 
 if (argv["help"] || (!filepatterns.length && !stdin)) {
-  console.log(
-    "\n" +
-    "Usage: parindent [opts] [filename ...]\n" +
-    "\n" +
-    "A minimal indenter for Lisp code (e.g. Clojure)\n" +
-    "\n" +
-    "Available options:\n" +
-    "  --write                  Edit the file in-place. (Beware!)\n" +
-    "  --list-different or -l   Print filenames of files that are different from Parindent formatting.\n" +
-    "  --stdin                  Read input from stdin.\n" +
-    "  --version or -v          Print Parindent version.\n" +
-    "\n"
-  );
+  console.log(USAGE);
   process.exit(argv["help"] ? 0 : 1);
 }
 

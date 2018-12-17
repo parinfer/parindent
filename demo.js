@@ -1,3 +1,5 @@
+// BROWSER DEMO
+
 import { fixIndent } from "./indent.js";
 
 const inputContainer = document.getElementById("inputContainer");
