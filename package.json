@@ -14,6 +14,9 @@
     "README.md",
     "CHANGES.md"
   ],
+  "scripts": {
+    "start": "http-server -o"
+  },
   "dependencies": {
     "chalk": "^2.4.1",
     "esm": "^3.0.84",
@@ -23,5 +26,8 @@
     "readline": "^1.3.0"
   },
   "author": "Shaun Lebron",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "http-server": "^0.11.1"
+  }
 }
