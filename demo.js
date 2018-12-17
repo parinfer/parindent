@@ -25,9 +25,25 @@ const defaultInput = `
   (:require [example.bar :as bar]
             [example.baz :as baz]))
 
+;; one-space
+(->> foo
+ (bar)
+ (baz))
+
+;; two-space
+(->> foo
+  (bar)
+  (baz))
+
+;; arg-alignment
+(->> foo
+     (bar)
+     (baz))
+
 ;; arbitrary arg alignment
 (assoc foo :bar bar
            :baz baz)
+
 
 ;; hiccups
 [:div {:style {:background "#FFF"
@@ -37,6 +53,14 @@ const defaultInput = `
     [:li "item 1"]
     [:li "item 2"]
     [:li "item 3"]]]
+
+(comment
+(foo bar
+     baz)
+  )
+
+#_(defn foo []
+ (println "HI"))
 `.trim();
 
 const cmInput = CodeMirror(inputContainer, {
