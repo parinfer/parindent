@@ -2,6 +2,7 @@
 <!-- BROWSER DEMO -->
 <html>
   <head>
+    <title>Parindent Demo</title>
     <!-- CodeMirror from: https://cdnjs.com/libraries/codemirror -->
     <link
       rel="stylesheet"
@@ -9,10 +10,48 @@
     />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.42.0/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.42.0/mode/clojure/clojure.min.js"></script>
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+      .editors {
+        padding: 0;
+        margin: 0 auto;
+        max-width: 1024px;
+        display: flex;
+        height: 100%;
+      }
+      .editor {
+        flex: 1;
+        padding: 2em;
+      }
+      .editor.output {
+        border-left: 1px solid #ddd;
+        background: #fafafa;
+      }
+      .CodeMirror {
+        height: auto;
+        background: none;
+      }
+
+      .cm-s-github .cm-keyword {color: #a71d5d;}    /* clojure core forms */
+      .cm-s-github .cm-builtin {color: #a71d5d;}    /* clojure core library */
+      .cm-s-github .cm-string {color: #183691;}     /* clojure strings */
+      .cm-s-github .cm-variable {color: #333;}      /* clojure misc symbols */
+      .cm-s-github .cm-def {color: #795da3;}        /* clojure function calls or defs */
+      .cm-s-github .cm-atom {color: #0086b3;}       /* clojure keyword, bool, nil */
+      .cm-s-github .cm-number {color: #0086b3;}     /* clojure number */
+      .cm-s-github .cm-bracket {color: #333;}       /* clojure brackets */
+      .cm-s-github .cm-comment {color: #969896; }    /* clojure comment */
+    </style>
   </head>
   <body>
-    <div id="inputContainer"></div>
-    <div id="outputContainer"></div>
+    <div class="editors">
+      <div class="editor input"></div>
+      <div class="editor output"></div>
+    </div>
     <script type="module" src="demo.js"></script>
   </body>
 </html>
