@@ -39,28 +39,61 @@ Available options:
 
 ## Current Rules
 
-- **Zero space**:
-  - Top-level forms
-- **One space**:
-  - Vectors, Maps, Sets
-  - Lists that do NOT start with symbol
-- **Two space**:
-  - Lists starting with symbol, whose second line is NOT _arg aligned_
-- **Arg-aligned**:
-  - Lists starting with symbol, whose second line is _arg aligned_
+1. ALLOW - 1-space, 2-space, or Arg-alignment (user preference determined by first sibling line)
+2. ENFORCE - vertically align sibling lines
+3. ENFORCE - indentation after a paren should imply containment
 
-To clarify, either of the following formats are chosen, depending on how the
-`baz` line is originally formatted:
+### 1. ALLOW - 1-space or 2-space or Arg-alignment (chosen by first sibling).
+
+All the following are allowed:
 
 ```clj
-;; Two space
+(foo
+ bar  ; <-- determines 1-space indentation
+ baz
+ qux)
+
 (foo bar
-  baz
+  baz    ; <-- determines 2-space indentation
   qux)
 
-;; Arg-aligned
 (foo bar
-     baz
+     baz   ; <-- determines arg-alignment
      qux)
+
+(foo bar baz
+         qux)  ; <-- determines deeper arg alignment
+```
+
+### 2. ENFORCE - sibling lines should be vertically aligned.
+
+Since indentation inside a form is determined solely by the first sibling line
+we currently don't allow staggered indentation of siblings:
+
+```diff
+ (cond
+   foo
+-    bar
++  bar
+
+   baz
+-    qux)
++    qux)
+```
+
+### 3. ENFORCE - indentation after a paren should imply containment
+
+_This is a [Parinfer] thing ☹️_
+
+[Parinfer]:http://shaunlebron.github.io/parinfer
+
+```diff
+ (defn foo
+  ([a b]
+-    (+ a b))
++  (+ a b))
+  ([a b c]
+-    (+ a b c)))
++  (+ a b c)))
 ```
 

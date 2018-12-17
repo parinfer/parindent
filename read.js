@@ -1,9 +1,9 @@
 // MINIMAL LISP READER
 // (adapted from Parinfer)
 //
-// Parses only the bare minimum to find indentation points and parens
+// Parses enough to find indentation points, parens, and token positions.
 //
-// Designed for Clojure, but should work for any syntax having:
+// Designed for Clojure syntax:
 // - Parens:     `(round), {curly}, [square]`
 // - Comments:   `; comment rest of line`
 // - Strings:    `"string"` (multi-line)
@@ -12,12 +12,6 @@
 //------------------------------------------------------------------------------
 // Constants / Predicates
 //------------------------------------------------------------------------------
-
-// NOTE: this is a performance hack
-// The main state object uses a lot of "unsigned integer or null" values.
-// Using a negative integer is faster than actual null because it cuts down on
-// type coercion overhead.
-export const UINT_NULL = -999;
 
 const BACKSLASH = "\\";
 const SPACE = " ";
@@ -48,16 +42,15 @@ function getInitialState(text, hooks = {}) {
   const lines = text.split(LINE_ENDING_REGEX);
 
   const state = {
-    hooks,
-    children: [],
+    hooks, //                 [object] - callbacks for each step of the reader
 
     lines, //                 [string array] - input lines that we process line-by-line, char-by-char
     lineNo: -1, //            [integer] - the current input line number
     x: -1, //                 [integer] - the current input x position of the current character (ch)
+    ch: "", //                [string] - the current input character
 
-    parenStack: [], //        We track where we are in the Lisp tree by keeping a stack (array) of open-parens.
-    //                        Stack elements are objects containing keys {ch, x, lineNo}
-    //                        whose values are the same as those described here in this state structure.
+    parenStack: [], //        [array of {ch,x,lineNo,children}] - current parentheses that we are nested inside of
+    children: [], //          [array of {ch,x,lineNo,children}] - current forms that have been parsed
 
     isEscaping: false, //     [boolean] - indicates if the next character will be escaped (e.g. `\c`).  This may be inside string, comment, or code.
     isInStr: false, //        [boolean] - indicates if we are currently inside a string
@@ -67,19 +60,8 @@ function getInitialState(text, hooks = {}) {
     trackingIndent: false, // [boolean] - are we looking for the indentation point of the current line?
     success: false, //        [boolean] - was the input properly formatted enough to create a valid state?
 
-    error: {
-      //                      if 'success' is false, return this error to the user
-      name: null, //          [string] - reader's unique name for this error
-      message: null, //       [string] - error message to display
-      lineNo: null, //        [integer] - line number of error
-      x: null, //             [integer] - start x position of error
-      extra: {
-        name: null,
-        lineNo: null,
-        x: null
-      }
-    },
-    errorPosCache: {} //     [object] - maps error name to a potential error position
+    error: null, //           [object] - {name, message, lineNo, x}
+    errorPosCache: {} //      [object] - maps error name to a potential error position
   };
 
   if (hooks.onInitState) {
@@ -109,10 +91,8 @@ const errorMessages = {
 };
 
 function cacheErrorPos(state, errorName) {
-  const e = {
-    lineNo: state.lineNo,
-    x: state.x
-  };
+  const { lineNo, x } = state;
+  const e = { lineNo, x };
   state.errorPosCache[errorName] = e;
   return e;
 }
@@ -247,7 +227,7 @@ function onCloseParen(state) {
 function onTab(state) {
   if (isInCode(state)) {
     const { lineNo, x } = state;
-    console.warning("TAB character found at", { lineNo, x });
+    console.warn("\nTAB character found at", { lineNo, x });
   }
 }
 
@@ -362,9 +342,7 @@ function processError(state, e) {
     delete e.readerError;
     state.error = e;
   } else {
-    state.error.name = ERROR_UNHANDLED;
-    state.error.message = e.stack;
-    throw e;
+    state.error = { name: ERROR_UNHANDLED, message: e.stack };
   }
 }
 
