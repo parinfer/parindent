@@ -1,5 +1,7 @@
 # Parindent
 
+__[Try it online](https://shaunlebron.github.io/parindent/)__
+
 **WIP public prototype**— Indent Clojure files based on the following discussions:
 
 - [Daniel Compton's call for a "no config" clojure formatter](https://clojureverse.org/t/clj-commons-building-a-formatter-like-gofmt-for-clojure/3240)
