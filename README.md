@@ -6,6 +6,42 @@
 - [Nikita Prokopov's proposed simple rules](http://tonsky.me/blog/clojurefmt/)
 - [discussion on indentation rules](https://github.com/clj-commons/formatter/issues/9)
 
+## Current Rules
+
+1. ALLOW - 1-space, 2-space, or Arg-alignment (user preference determined by first sibling line)
+2. ENFORCE - vertically aligned sibling lines
+3. ENFORCE - indentation after a paren should imply containment
+
+## Friction
+
+Staggered indentation of siblings not allowed:
+
+```diff
+ (cond
+   foo
+-    bar
++  bar
+
+   baz
+-    qux)
++    qux)
+```
+
+Cannot indent past an open-paren unless contained inside it ([Parinfer]):
+
+[Parinfer]:http://shaunlebron.github.io/parinfer
+
+```diff
+ (defn foo
+  ([a b]
+-    (+ a b))
++  (+ a b))
+  ([a b c]
+-    (+ a b c)))
++  (+ a b c)))
+```
+
+
 ## Install
 
 ```
@@ -36,64 +72,3 @@ Available options:
   --version or -v          Print Parindent version.
 
 ```
-
-## Current Rules
-
-1. ALLOW - 1-space, 2-space, or Arg-alignment (user preference determined by first sibling line)
-2. ENFORCE - vertically align sibling lines
-3. ENFORCE - indentation after a paren should imply containment
-
-### 1. ALLOW - 1-space or 2-space or Arg-alignment (chosen by first sibling).
-
-All the following are allowed:
-
-```clj
-(foo
- bar  ; <-- determines 1-space indentation
- baz
- qux)
-
-(foo bar
-  baz    ; <-- determines 2-space indentation
-  qux)
-
-(foo bar
-     baz   ; <-- determines arg-alignment
-     qux)
-
-(foo bar baz
-         qux)  ; <-- determines deeper arg alignment
-```
-
-### 2. ENFORCE - sibling lines should be vertically aligned.
-
-Since indentation inside a form is determined solely by the first sibling line
-we currently don't allow staggered indentation of siblings:
-
-```diff
- (cond
-   foo
--    bar
-+  bar
-
-   baz
--    qux)
-+    qux)
-```
-
-### 3. ENFORCE - indentation after a paren should imply containment
-
-_This is a [Parinfer] thing ☹️_
-
-[Parinfer]:http://shaunlebron.github.io/parinfer
-
-```diff
- (defn foo
-  ([a b]
--    (+ a b))
-+  (+ a b))
-  ([a b c]
--    (+ a b c)))
-+  (+ a b c)))
-```
-
