@@ -27,7 +27,7 @@ Staggered indentation of siblings not allowed:
 
    baz
 -    qux)
-+    qux)
++  qux)
 ```
 
 Cannot indent past an open-paren unless contained inside it ([Parinfer]):
